@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResonAI | Audio Upscaler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f1014;
+            --card-bg: #1b1e26;
+            --accent: #6c5ce7;
+            --accent-hover: #5a4ad1;
+            --text-main: #ffffff;
+            --text-sec: #a0a0a0;
+            --success: #00b894;
+            --error: #ff7675;
+            --input-bg: #2d3436;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .bg-glow { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(108,92,231,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; z-index: -1; top: -200px; left: -200px; }
+        .bg-glow-2 { position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,184,148,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; z-index: -1; bottom: -150px; right: -150px; }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        h1 { font-weight: 700; margin-bottom: 0.5rem; font-size: 2rem; background: linear-gradient(90deg, #fff, #a29bfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p.subtitle { color: var(--text-sec); font-size: 0.9rem; margin-bottom: 2rem; }
+
+        /* ВЫБОР МОДЕЛИ */
+        .model-select-container {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .label-text {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-sec);
+            margin-bottom: 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        select.model-select {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--input-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            appearance: none; /* Убираем стандартную стрелку */
+            cursor: pointer;
+            transition: border 0.2s;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a0a0a0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 0.8rem auto;
+        }
+
+        select.model-select:focus { outline: none; border-color: var(--accent); }
+        select.model-select option { background-color: var(--card-bg); }
+
+        /* ЗОНА ЗАГРУЗКИ */
+        .upload-zone {
+            border: 2px dashed rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 2.5rem 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            background: rgba(255,255,255,0.01);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(108, 92, 231, 0.08); transform: scale(1.02); }
+        .icon-upload { font-size: 3.5rem; color: var(--text-sec); line-height: 1; display: block; }
+        #dropText { line-height: 1.5; color: var(--text-sec); font-weight: 500; }
+        input[type="file"] { display: none; }
+
+        .file-info { margin-top: 1.5rem; font-size: 1rem; font-weight: 500; color: var(--accent); display: none; background: rgba(108, 92, 231, 0.1); padding: 0.5rem 1rem; border-radius: 8px; }
+
+        /* BUTTON */
+        .btn {
+            background-color: var(--accent); color: white; border: none; padding: 1rem 2rem; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 2rem; width: 100%; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 12px; height: 54px;
+        }
+        .btn:hover:not(:disabled) { background-color: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4); }
+        .btn:disabled { background-color: #3b3b45; cursor: not-allowed; opacity: 0.7; }
+        .btn.success { background-color: var(--success); }
+        .btn.error { background-color: var(--error); }
+
+        /* PROGRESS */
+        .progress-container { margin-top: 1.5rem; display: none; text-align: left; }
+        .status-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-sec); }
+        .progress-bar-bg { width: 100%; height: 8px; background: #2d3436; border-radius: 4px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #a29bfe); border-radius: 4px; transition: width 0.3s ease; position: relative; }
+        .progress-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transform: translateX(-100%); animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="container">
+        <h1>ResonAI</h1>
+        <p class="subtitle">Next-Gen Audio Super Resolution</p>
+
+        <div class="model-select-container">
+            <span class="label-text">Выберите режим ИИ:</span>
+            <select id="modelSelect" class="model-select">
+                <option value="standard">✨ Standard (48kHz / 24bit)</option>
+                <option value="audiophile">🔥 Audiophile (192kHz Beta)</option>
+                <option value="restore">🛠 Deep Restore (Fix Bad Audio)</option>
+            </select>
+        </div>
+
+        <label class="upload-zone" id="dropZone">
+            <span class="icon-upload">📂</span>
+            <span id="dropText">Перетащи файл сюда<br>или кликни для выбора</span>
+            <input type="file" id="audioInput" accept=".wav,.flac,.mp3">
+        </label>
+
+        <div id="fileInfoBox" style="display: none;">
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="status-header">
+                <span id="statusLabel">Ожидание...</span>
+                <span id="percentLabel">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+        </div>
+
+        <button class="btn" id="uploadBtn" disabled>
+            <div class="spinner" id="btnSpinner"></div>
+            <span id="btnText">Начать обработку</span>
+        </button>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('audioInput');
+        const fileInfoBox = document.getElementById('fileInfoBox');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const statusLabel = document.getElementById('statusLabel');
+        const percentLabel = document.getElementById('percentLabel');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+        const dropText = document.getElementById('dropText');
+        const modelSelect = document.getElementById('modelSelect');
+
+        let selectedFile = null;
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if(e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            selectedFile = file;
+            fileInfo.textContent = `🎵 ${file.name}`;
+            fileInfoBox.style.display = 'block';
+            dropText.innerHTML = "Файл выбран";
+            dropZone.style.borderColor = "var(--success)";
+            uploadBtn.disabled = false;
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            uploadBtn.classList.remove('success', 'error');
+            btnSpinner.style.display = 'block';
+            btnText.textContent = 'Обработка...';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            statusLabel.textContent = 'Загрузка...';
+            percentLabel.textContent = '0%';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            // Добавляем выбранную модель
+            formData.append('model_type', modelSelect.value);
+
+            try {
+                let fakeProgress = 0;
+                const progressInterval = setInterval(() => {
+                    fakeProgress += Math.random() * 3;
+                    if (fakeProgress > 90) fakeProgress = 90;
+                    progressBar.style.width = fakeProgress + '%';
+                    percentLabel.textContent = Math.round(fakeProgress) + '%';
+                    if(fakeProgress > 20) statusLabel.textContent = 'Работает нейросеть...';
+                }, 400);
+
+                const response = await fetch('/predict', { method: 'POST', body: formData });
+
+                clearInterval(progressInterval);
+
+                if (response.ok) {
+                    progressBar.style.width = '100%';
+                    percentLabel.textContent = '100%';
+                    statusLabel.textContent = 'Готово!';
+                    
+                    btnSpinner.style.display = 'none';
+                    btnText.textContent = 'Готово!';
+                    uploadBtn.classList.add('success');
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    const disposition = response.headers.get('Content-Disposition');
+                    let fileName = `Upscaled_${selectedFile.name.split('.')[0]}.flac`;
+                    if (disposition && disposition.indexOf('filename*=utf-8') !== -1) {
+                         const match = disposition.match(/filename\*=utf-8''(.+)/);
+                         if (match && match[1]) fileName = decodeURIComponent(match[1]);
+                    }
+                    
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } else {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Ошибка сервера');
+                }
+            } catch (error) {
+                console.error(error);
+                statusLabel.textContent = 'Ошибка: ' + error.message;
+                progressBar.style.background = '#ff7675';
+                btnSpinner.style.display = 'none';
+                btnText.textContent = 'Ошибка';
+                uploadBtn.classList.add('error');
+            } finally {
+                setTimeout(() => {
+                    if (uploadBtn.classList.contains('success') || uploadBtn.classList.contains('error')) {
+                        uploadBtn.disabled = false;
+                        uploadBtn.classList.remove('success', 'error');
+                        btnText.textContent = 'Начать обработку';
+                        progressBar.style.width = '0%';
+                        progressContainer.style.display = 'none';
+                        percentLabel.textContent = '0%';
+                    }
+                }, 4000);
+            }
+        });
+    </script>
+</body>
+</html>
